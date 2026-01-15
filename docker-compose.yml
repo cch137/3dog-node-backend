@@ -9,7 +9,8 @@ services:
       PORT: 3609
       DEBUG: "*"
     env_file:
-      - .env
+      - path: .env
+        required: false
     ports:
       - "3609:3609"
     networks:
