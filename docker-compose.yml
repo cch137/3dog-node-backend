@@ -1,0 +1,18 @@
+services:
+  dog3-node-backend:
+    build: .
+    image: dog3-node-backend:latest
+    container_name: dog3-node-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3609
+      DEBUG: "*"
+    ports:
+      - "3609:3609"
+    networks:
+      - dog3-node-backend-net
+
+networks:
+  dog3-node-backend-net:
+    driver: bridge

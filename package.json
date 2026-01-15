@@ -4,9 +4,15 @@
   "description": "a simple dss",
   "main": "index.ts",
   "scripts": {
+    "pw:install": "playwright install --with-deps",
+    "deps:dev": "npm ci && npm run pw:install",
+    "deps:prod": "npm ci --omit=dev && npm run pw:install",
+    "build": "tsc -p tsconfig.json",
+    "build:clean": "rm -rf dist",
     "test": "jest",
     "dev": "nodemon",
-    "start": "ts-node index.ts"
+    "start": "node dist/index.js",
+    "start:ts": "ts-node index.ts"
   },
   "author": "",
   "license": "ISC",
@@ -38,10 +44,10 @@
     "@types/debug": "^4.1.12",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
+    "cross-env": "^10.1.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
     "ts-jest": "^29.4.5",
-    "ts-node": "^10.9.2",
-    "tsc": "^2.0.4"
+    "ts-node": "^10.9.2"
   }
 }
