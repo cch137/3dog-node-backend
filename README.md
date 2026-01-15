@@ -81,43 +81,43 @@ npm test
 
 容器環境下，伺服器預設監聽 3609 埠號 (port)。
 
+Docker 分為兩種方式：**自行建置（build）**與**拉取雲端檔案（GHCR）**。
+
+### 方式一：自行建置（build）
+
 > 相關指令皆已封裝成 npm scripts，預設使用 `docker-compose.yml`。
 
-### 建立 image（build）
+建立 image（build）：
 
 ```bash
 npm run docker:build
 ```
 
-### 啟動服務（up）
+啟動服務（up）：
 
 ```bash
 npm run docker:up
 ```
 
-### 停止 / 移除（down）
-
-停止並移除容器與網路：
+停止 / 移除（down）：
 
 ```bash
 npm run docker:down
 ```
 
-### 只停止（stop）
-
-只停止、不移除容器：
+只停止、不移除容器（stop）：
 
 ```bash
 npm run docker:stop
 ```
 
-### 查看狀態（ps）
+查看狀態（ps）：
 
 ```bash
 npm run docker:ps
 ```
 
-### 查看 logs（follow）
+查看 logs（follow）：
 
 ```bash
 npm run docker:logs
@@ -125,42 +125,47 @@ npm run docker:logs
 
 ---
 
-## Docker（使用 GHCR image）
+### 方式二：拉取雲端檔案（GHCR，免 clone 專案）
 
-> 會使用 `docker-compose.yml` + `docker-compose.ghcr.yml` 進行覆蓋（pull / up / down / logs）。
-
-### 先 pull image
+不需要 clone 本專案；在你要放置部署檔案的資料夾中（任意空資料夾即可）執行以下指令下載 `docker-compose.yml`，並將 `.env` 放在同一個資料夾內：
 
 ```bash
-npm run docker:ghcr:pull
+curl -L https://github.com/cch137/3dog-node-backend/raw/master/docker-compose.ghcr.yml -o docker-compose.yml
 ```
 
-### 啟動服務（up）
+啟動（背景執行）：
 
 ```bash
-npm run docker:ghcr:up
+docker compose up -d
 ```
 
-### 啟動並強制每次都 pull 最新（up --pull always）
+停止 / 移除（down）：
 
 ```bash
-npm run docker:ghcr:up:pull
+docker compose down
 ```
 
-### 停止 / 移除（down）
+只停止、不移除容器（stop）：
 
 ```bash
-npm run docker:ghcr:down
+docker compose stop
 ```
 
-### 查看狀態（ps）
+如需更新到最新映像：
 
 ```bash
-npm run docker:ghcr:ps
+docker compose pull
+docker compose up -d
 ```
 
-### 查看 logs（follow）
+查看狀態（ps）：
 
 ```bash
-npm run docker:ghcr:logs
+docker compose ps
+```
+
+查看 logs（follow）：
+
+```bash
+docker compose logs
 ```
