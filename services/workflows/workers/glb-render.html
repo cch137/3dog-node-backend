@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.182.0/build/three.module.min.js",
+          "three/addons/": "https://unpkg.com/three@0.182.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <script type="module">
+      import * as THREE from "three";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+      // mark readiness for node side
+      window.__API_READY = false;
+
+      let i = 0;
+
+      window.__RENDER_GLB_VIEWS = async function (glbBase64, options = {}) {
+        // options
+        const size = parseInt(options.size, 10) || 1024;
+        const backgroundColor = String(options.background) || "#101010";
+        const format = String(options.format) || "image/png";
+        const jpegQuality = parseInt(options.jpegQuality, 10) || 0.92;
+        const views = options.views || [];
+
+        if (!views.length) {
+          views.push({
+            polar: THREE.MathUtils.degToRad(90),
+            azimuth: THREE.MathUtils.degToRad(0),
+          });
+        }
+
+        // setup canvas
+        const taskId = `task-${++i}`;
+        const canvasElement = document.createElement("canvas");
+        canvasElement.id = taskId;
+        document.body.appendChild(canvasElement);
+
+        try {
+          // setup renderer
+          const renderer = new THREE.WebGLRenderer({
+            canvas: canvasElement,
+            antialias: true,
+            preserveDrawingBuffer: true,
+          });
+          renderer.setSize(size, size, false);
+          renderer.setPixelRatio(1);
+          renderer.setClearColor(backgroundColor, 1);
+
+          // read GLB buffer
+          const arrayBuffer = await fetch(
+            "data:application/octet-stream;base64," + glbBase64
+          ).then((r) => r.arrayBuffer());
+
+          // create scene
+          const scene = new THREE.Scene();
+          scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+          const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+          dir.position.set(3, 5, 4);
+          scene.add(dir);
+
+          const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1e6);
+          const loader = new GLTFLoader();
+          // parseAsync exists in modern GLTFLoader. Fallback to parse with Promise wrapper if needed.
+          let gltf;
+          if (loader.parseAsync) {
+            gltf = await loader.parseAsync(arrayBuffer, "");
+          } else {
+            gltf = await new Promise((res, rej) => {
+              loader.parse(
+                arrayBuffer,
+                "",
+                (g) => res(g),
+                (e) => rej(e)
+              );
+            });
+          }
+
+          const root = gltf.scene || gltf.scenes?.[0];
+          if (!root) throw new Error("GLB has no scene.");
+          scene.add(root);
+
+          const box = new THREE.Box3().setFromObject(root);
+          const center = new THREE.Vector3();
+          const sphere = new THREE.Sphere();
+          box.getCenter(center);
+          box.getBoundingSphere(sphere);
+          root.position.sub(center);
+
+          const fovRad = THREE.MathUtils.degToRad(camera.fov);
+          const distance = (sphere.radius / Math.sin(fovRad / 2)) * 1.15;
+
+          const deg = THREE.MathUtils.degToRad;
+
+          const out = [];
+          const target = new THREE.Vector3(0, 0, 0);
+
+          for (const v of views) {
+            const spherical = new THREE.Spherical(distance, v.polar, v.azimuth);
+            const pos = new THREE.Vector3().setFromSpherical(spherical);
+            camera.position.copy(pos);
+            camera.lookAt(target);
+            camera.updateMatrixWorld(true);
+
+            renderer.render(scene, camera);
+            const dataUrl = renderer.domElement.toDataURL(
+              format,
+              format === "image/jpeg" ? jpegQuality : undefined
+            );
+            out.push(dataUrl);
+          }
+
+          // best-effort cleanup
+          try {
+            renderer.dispose();
+          } catch (e) {
+            /* ignore */
+          }
+          return out;
+        } finally {
+          document.body.removeChild(canvasElement);
+        }
+      };
+
+      window.__API_READY = true;
+    </script>
+  </body>
+</html>

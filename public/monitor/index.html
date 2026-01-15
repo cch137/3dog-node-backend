@@ -1,0 +1,63 @@
+<html>
+  <head>
+    <title>MR Backend Monitor</title>
+    <style>
+      body {
+        font-family: monospace;
+        background: #121314;
+        color: #e0e0e0;
+        margin: 0;
+        padding: 0;
+      }
+      * {
+        box-sizing: content-box;
+      }
+      main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        margin: 2rem 0.5rem;
+      }
+      h1 {
+        font-size: 3rem;
+        margin: 0;
+        text-align: center;
+      }
+      button {
+        background: #e0e0e0;
+        color: #101010;
+        border: none;
+        outline: none;
+        border-radius: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+        width: 8rem;
+      }
+      button[disabled] {
+        opacity: 0.75;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Monitor</h1>
+      <button id="start-btn">Start</button>
+      <button id="mic-btn">Mic: OFF</button>
+      <div>
+        <div style="text-align: center">Volume</div>
+        <input
+          type="range"
+          id="volume-slider"
+          min="0"
+          max="100"
+          step="1"
+          value="50"
+        />
+      </div>
+    </main>
+    <script src="/monitor/main.js"></script>
+  </body>
+</html>
