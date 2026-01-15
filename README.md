@@ -9,6 +9,19 @@
 - Jest（測試框架）
 - Playwright（瀏覽器環境／自動化依賴）
 
+## 環境變數（機密）設定
+
+請將 `.env` 放在專案根目錄。若使用容器部署，Docker 在建置映像檔時會忽略 `.env`，並於容器啟動時從執行環境動態載入。映像檔與容器內皆不會包含 `.env` 檔案。
+
+### 必要環境變數
+
+- `GOOGLE_GENERATIVE_AI_API_KEY`（必填）
+  - Google Generative AI 的 API 金鑰。
+- `PORT`（選填，僅非容器環境）
+  - 指定服務綁定的單一埠號。
+- `PORTS`（選填，僅非容器環境）
+  - 指定多個埠號，以逗號分隔，例如：`3000,3001,3002`。
+
 ## 指令
 
 ### 安裝相依
@@ -71,13 +84,13 @@ npm test
 ### 建立 image（build）
 
 ```bash
-docker compose build
+npm run docker:build
 ```
 
 ### 啟動服務（start）
 
 ```bash
-docker compose up -d
+npm run docker:up
 ```
 
 ### 停止服務（stop）
@@ -85,14 +98,16 @@ docker compose up -d
 停止並移除容器與網路：
 
 ```bash
-docker compose down
+npm run docker:down
 ```
 
 只停止、不移除容器：
 
 ```bash
-docker compose stop
+npm run docker:stop
 ```
+
+### 其它
 
 查看狀態：
 
