@@ -127,7 +127,7 @@ npm run docker:logs
 
 ## Docker（使用 GHCR image）
 
-> 會使用 `docker-compose.yml` + `compose.ghcr.yml` 進行覆蓋（pull / up / down / logs）。
+> 會使用 `docker-compose.yml` + `docker-compose.ghcr.yml` 進行覆蓋（pull / up / down / logs）。
 
 ### 先 pull image
 
