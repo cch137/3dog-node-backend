@@ -38,8 +38,6 @@ npm run deps:dev
 npm run deps:prod
 ```
 
-> `pw:install` 會安裝 Playwright 瀏覽器與系統相依：`playwright install --with-deps`
-
 ### Build
 
 ```bash
@@ -79,7 +77,9 @@ npm run start:ts
 npm test
 ```
 
-## Docker（建立 / 啟動 / 停止）
+## Docker 容器部署
+
+> 相關指令皆已封裝成 npm scripts，預設使用 `docker-compose.yml`。
 
 ### 建立 image（build）
 
@@ -87,15 +87,13 @@ npm test
 npm run docker:build
 ```
 
-### 啟動服務（start）
-
-容器環境下，伺服器預設監聽 `3609` 埠號 (port)。
+### 啟動服務（up）
 
 ```bash
 npm run docker:up
 ```
 
-### 停止服務（stop）
+### 停止 / 移除（down）
 
 停止並移除容器與網路：
 
@@ -103,22 +101,64 @@ npm run docker:up
 npm run docker:down
 ```
 
+### 只停止（stop）
+
 只停止、不移除容器：
 
 ```bash
 npm run docker:stop
 ```
 
-### 其它
-
-查看狀態：
+### 查看狀態（ps）
 
 ```bash
-docker compose ps
+npm run docker:ps
 ```
 
-查看 log：
+### 查看 logs（follow）
 
 ```bash
-docker compose logs -f
+npm run docker:logs
+```
+
+---
+
+## Docker（使用 GHCR image）
+
+> 會使用 `docker-compose.yml` + `compose.ghcr.yml` 進行覆蓋（pull / up / down / logs）。
+
+### 先 pull image
+
+```bash
+npm run docker:ghcr:pull
+```
+
+### 啟動服務（up）
+
+```bash
+npm run docker:ghcr:up
+```
+
+### 啟動並強制每次都 pull 最新（up --pull always）
+
+```bash
+npm run docker:ghcr:up:pull
+```
+
+### 停止 / 移除（down）
+
+```bash
+npm run docker:ghcr:down
+```
+
+### 查看狀態（ps）
+
+```bash
+npm run docker:ghcr:ps
+```
+
+### 查看 logs（follow）
+
+```bash
+npm run docker:ghcr:logs
 ```
