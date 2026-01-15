@@ -8,6 +8,8 @@ services:
       NODE_ENV: production
       PORT: 3609
       DEBUG: "*"
+    env_file:
+      - .env
     ports:
       - "3609:3609"
     networks:
