@@ -65,3 +65,43 @@ npm run start:ts
 ```bash
 npm test
 ```
+
+## Docker（建立 / 啟動 / 停止）
+
+### 建立 image（build）
+
+```bash
+docker compose build
+```
+
+### 啟動服務（start）
+
+```bash
+docker compose up -d
+```
+
+### 停止服務（stop）
+
+停止並移除容器與網路：
+
+```bash
+docker compose down
+```
+
+只停止、不移除容器：
+
+```bash
+docker compose stop
+```
+
+查看狀態：
+
+```bash
+docker compose ps
+```
+
+查看 log：
+
+```bash
+docker compose logs -f
+```
