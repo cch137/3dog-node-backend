@@ -10,4 +10,5 @@ module.exports = {
   },
   verbose: true,
   maxWorkers: 16,
+  testPathIgnorePatterns: ["/node_modules/", "/dist/"],
 };

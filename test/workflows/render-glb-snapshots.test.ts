@@ -6,7 +6,7 @@ import {
   GlbSnapshotsRenderer,
   createImageGrid,
   deg,
-} from "../../services/workflows/render-glb-snapshots";
+} from "../../src/services/workflows/render-glb-snapshots";
 
 describe("workflows/render-glb-snapshots", () => {
   jest.setTimeout(10_000);

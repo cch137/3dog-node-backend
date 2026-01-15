@@ -2,18 +2,18 @@
   "name": "backend_server",
   "version": "0.0.0",
   "description": "a simple dss",
-  "main": "index.ts",
+  "main": "src/index.ts",
   "scripts": {
     "postinstall": "npm run pw:install",
     "pw:install": "playwright install --with-deps",
     "deps:dev": "npm ci && npm run postinstall",
     "deps:prod": "npm ci --omit=dev && npm run postinstall",
     "build": "tsc -p tsconfig.json",
-    "build:clean": "rm -rf dist",
+    "build:clean": "npx rimraf dist",
     "test": "jest",
     "dev": "nodemon",
     "start": "node dist/index.js",
-    "start:ts": "ts-node index.ts"
+    "start:ts": "ts-node src/index.ts"
   },
   "author": "",
   "license": "ISC",

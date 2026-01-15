@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { webcrypto } from "node:crypto";
-import { createDatabase } from "../services/db";
+import { createDatabase } from "../src/services/db";
 
 if (!globalThis.crypto?.subtle) {
   (globalThis as any).crypto = webcrypto;
