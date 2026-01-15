@@ -3,6 +3,6 @@ revision = 3
 requires-python = ">=3.13"
 
 [[package]]
-name = "ncu-comm-114-mixed-reality-project"
+name = "3dog-node-backend"
 version = "0.1.0"
 source = { virtual = "." }

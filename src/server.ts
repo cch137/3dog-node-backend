@@ -61,7 +61,7 @@ export const servers = (() => {
 
   if (ports.size === 0) ports.add(3000);
 
-  return Object.freeze(
+  const servers = Object.freeze(
     Array.from(ports).map((port) => {
       const server = serve({ fetch: app.fetch, port }, (info) =>
         log(`online @ http://localhost:${info.port}`)
@@ -70,4 +70,18 @@ export const servers = (() => {
       return server;
     })
   );
+
+  const shutdown = (signal: string) => {
+    try {
+      log(`received ${signal}, shutting down...`);
+      servers.forEach((server) => server.close());
+    } finally {
+      process.exit(0);
+    }
+  };
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+  return servers;
 })();
