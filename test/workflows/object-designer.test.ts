@@ -28,8 +28,8 @@ describe("workflows/object-designer", () => {
 
     const outDir = path.resolve(
       process.cwd(),
-      "public",
-      "output",
+      "test",
+      "artifacts",
       "workflows",
       "object-designer"
     );

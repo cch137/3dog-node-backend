@@ -21,8 +21,8 @@ describe("workflows/render-glb-snapshots", () => {
 
   const outDir = path.resolve(
     process.cwd(),
-    "public",
-    "output",
+    "test",
+    "artifacts",
     "workflows",
     "render-glb-snapshots"
   );
@@ -41,7 +41,7 @@ describe("workflows/render-glb-snapshots", () => {
     await renderer.destroy();
   });
 
-  it("renders default 16 PNG snapshots and writes them to public/output for preview", async () => {
+  it("renders default 16 PNG snapshots and writes them for preview", async () => {
     const views = await renderer.renderGlbSnapshots(glb, {
       size: 256,
       background: "#000000",
@@ -88,7 +88,7 @@ describe("workflows/render-glb-snapshots", () => {
     expect(gridMeta.height).toBe(256 * 4);
   });
 
-  it("renders custom JPEG snapshots + grid and writes them to public/output for preview", async () => {
+  it("renders custom JPEG snapshots + grid and writes them for preview", async () => {
     const views = await renderer.renderGlbSnapshots(glb, {
       views: [
         { polar: deg(45), azimuth: deg(0) },
