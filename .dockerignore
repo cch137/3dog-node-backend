@@ -1,0 +1,7 @@
+.venv
+dist
+node_modules
+.env
+.env.local
+.env.*.local
+*.key
