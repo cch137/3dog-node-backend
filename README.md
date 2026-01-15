@@ -133,6 +133,12 @@ npm run docker:logs
 curl -L https://github.com/cch137/3dog-node-backend/raw/master/docker-compose.ghcr.yml -o docker-compose.yml
 ```
 
+下載 / 更新映像：
+
+```bash
+docker compose pull
+```
+
 啟動（背景執行）：
 
 ```bash
@@ -149,13 +155,6 @@ docker compose down
 
 ```bash
 docker compose stop
-```
-
-如需更新到最新映像：
-
-```bash
-docker compose pull
-docker compose up -d
 ```
 
 查看狀態（ps）：
