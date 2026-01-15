@@ -1,4 +1,4 @@
 services:
   dog3-node-backend:
     build: null
-    image: ghcr.io/cch137/dog3-node-backend:latest
+    image: ghcr.io/cch137/3dog-node-backend:latest
