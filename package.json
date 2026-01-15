@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "postinstall": "npm run pw:install",
-    "pw:install": "playwright install --with-deps",
+    "pw:install": "playwright install --with-deps chromium",
     "deps:dev": "npm ci && npm run postinstall",
     "deps:prod": "npm ci --omit=dev && npm run postinstall",
     "build": "tsc -p tsconfig.json",
