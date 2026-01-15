@@ -79,6 +79,8 @@ npm test
 
 ## Docker 容器部署
 
+容器環境下，伺服器預設監聽 3609 埠號 (port)。
+
 > 相關指令皆已封裝成 npm scripts，預設使用 `docker-compose.yml`。
 
 ### 建立 image（build）
