@@ -89,6 +89,8 @@ npm run docker:build
 
 ### 啟動服務（start）
 
+容器環境下，伺服器預設監聽 `3609` 埠號 (port)。
+
 ```bash
 npm run docker:up
 ```

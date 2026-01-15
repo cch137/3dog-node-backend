@@ -8,6 +8,7 @@
     "pw:install": "playwright install --with-deps chromium",
     "deps:dev": "npm ci",
     "deps:prod": "npm ci --omit=dev",
+    "prebuild": "npm run build:clean",
     "build": "tsc -p tsconfig.json",
     "build:clean": "npx rimraf dist",
     "postbuild": "npm run assets:copy",
