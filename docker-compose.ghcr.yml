@@ -2,3 +2,20 @@ services:
   dog3-node-backend:
     build: null
     image: ghcr.io/cch137/3dog-node-backend:latest
+    container_name: dog3-node-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3609
+      DEBUG: "*"
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "3609:3609"
+    networks:
+      - dog3-node-backend-net
+
+networks:
+  dog3-node-backend-net:
+    driver: bridge
