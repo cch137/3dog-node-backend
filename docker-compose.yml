@@ -1,8 +1,7 @@
 services:
-  dog3-node-backend:
+  3dog-node-backend:
     build: .
-    image: dog3-node-backend:latest
-    container_name: dog3-node-backend
+    image: 3dog-node-backend:latest
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -14,8 +13,8 @@ services:
     ports:
       - "3609:3609"
     networks:
-      - dog3-node-backend-net
+      - 3dog-node-backend-net
 
 networks:
-  dog3-node-backend-net:
+  3dog-node-backend-net:
     driver: bridge
