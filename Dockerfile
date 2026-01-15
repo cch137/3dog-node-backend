@@ -30,8 +30,9 @@ COPY package*.json ./
 RUN npm run deps:prod
 
 # Copy only what is needed to run
-COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/bin ./bin
+COPY --from=build /usr/src/app/dist ./dist
+COPY --from=build /usr/src/app/public ./public
 
 EXPOSE 3609
 
