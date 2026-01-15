@@ -4,9 +4,10 @@
   "description": "a simple dss",
   "main": "index.ts",
   "scripts": {
+    "postinstall": "npm run pw:install",
     "pw:install": "playwright install --with-deps",
-    "deps:dev": "npm ci && npm run pw:install",
-    "deps:prod": "npm ci --omit=dev && npm run pw:install",
+    "deps:dev": "npm ci && npm run postinstall",
+    "deps:prod": "npm ci --omit=dev && npm run postinstall",
     "build": "tsc -p tsconfig.json",
     "build:clean": "rm -rf dist",
     "test": "jest",
