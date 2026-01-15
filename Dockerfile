@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage: install all deps (including devDeps) and compile the app
-FROM node:24-alpine AS build
+FROM node:24.13.0-bookworm-slim AS build
 WORKDIR /usr/src/app
 
 # Copy only manifests first to leverage Docker layer caching
@@ -18,7 +18,7 @@ RUN npm run build
 
 
 # Runtime stage: keep the image small (only prod deps + build output)
-FROM node:24-alpine AS runtime
+FROM node:24.13.0-bookworm-slim AS runtime
 WORKDIR /usr/src/app
 
 # Runtime defaults
