@@ -16,8 +16,12 @@ app.route("", dss);
 app.route("/monitor/", monitor);
 app.route("/obj-dsgn/", objectDesigner);
 
-app.get("/", (c) => {
+app.get("/healthz", (c) => {
   return c.json({ status: "OK" });
+});
+
+app.get("/", (c) => {
+  return c.redirect("/monitor");
 });
 
 app.get("/mr-realtime", upgradeWebSocket(realtimeHandler));
