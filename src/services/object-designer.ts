@@ -18,6 +18,12 @@ import {
 } from "./workflows/render-glb-snapshots";
 import { loadInstructionsTemplateSync } from "./instructions";
 
+export type TaskResult =
+  | { code: string; mime_type: string; glb: Uint8Array<ArrayBuffer> }
+  | { error: string };
+
+const DEFAULT_MAX_RETRIES = 2;
+
 export const ObjectGenerationOptionsSchema = z.object({
   id: z.string().optional(),
   version: z.string(),
@@ -31,6 +37,7 @@ export const ObjectGenerationOptionsSchema = z.object({
     }, "providerOptions should be an object")
     .optional(),
   vmTimeoutMs: z.number().optional(),
+  maxRetries: z.number().optional(),
 });
 
 export type ObjectGenerationOptions = z.infer<
@@ -74,9 +81,7 @@ const log = debug("obj-dsgn");
 
 export class ObjectGenerationTask extends EventEmitter<{
   statusChange: [newStatus: Status, oldStatus: Status];
-  success: [{ code: string; glb: Uint8Array<ArrayBuffer> }];
-  error: [{ error: string }];
-  ended: [];
+  completed: [result: TaskResult];
 }> {
   private static readonly renderThreeJsGenerationPrompt =
     loadInstructionsTemplateSync<ObjectProps>("threejs-generation");
@@ -88,6 +93,7 @@ export class ObjectGenerationTask extends EventEmitter<{
     languageModel,
     providerOptions,
     vmTimeoutMs,
+    maxRetries,
   }: ObjectGenerationOptions) {
     super();
 
@@ -107,6 +113,7 @@ export class ObjectGenerationTask extends EventEmitter<{
     this.languageModel = languageModel;
     this.providerOptions = providerOptions;
     this.vmTimeoutMs = vmTimeoutMs;
+    this.maxRetries = maxRetries;
 
     this.log(`queued for object '${this.objectProps.object_name}'`);
   }
@@ -144,6 +151,7 @@ export class ObjectGenerationTask extends EventEmitter<{
   readonly languageModel: LanguageModel;
   readonly providerOptions?: ProviderOptions;
   readonly vmTimeoutMs?: number;
+  readonly maxRetries?: number;
 
   // promises
 
@@ -157,41 +165,65 @@ export class ObjectGenerationTask extends EventEmitter<{
       if (this.cancelled) return resolve();
 
       const instructions = ObjectGenerationTask.renderThreeJsGenerationPrompt(
-        this.objectProps
+        this.objectProps,
       );
 
-      generateCode({
-        prompt: instructions,
-        model: this.languageModel,
-        providerOptions: this.providerOptions,
-      })
-        .then(async (code) => {
-          if (this.cancelled) return;
+      let isSucceeded = false;
+      let retries = 0;
+      const results: TaskResult[] = [];
+      const maxRetries = Math.max(0, this.maxRetries ?? DEFAULT_MAX_RETRIES);
 
-          const glb = await generateGlbFromCode({
-            code,
-            timeoutMs: this.vmTimeoutMs,
-          });
-          const result = { code, glb, mime_type: "model/gltf-binary" };
+      (async () => {
+        while (retries <= maxRetries) {
+          if (retries != 0) {
+            this.log(
+              `Retry (${retries}/${maxRetries}), Reason:`,
+              results.at(-1),
+            );
+          }
 
-          if (this.cancelled) return;
+          try {
+            const code = await generateCode({
+              prompt: instructions,
+              model: this.languageModel,
+              providerOptions: this.providerOptions,
+            });
+            if (this.cancelled) return;
 
-          this.status = Status.SUCCEEDED;
-          this.emit("success", result);
-          this.save(result).finally(() => this.emit("ended"));
-        })
-        .catch(async (err) => {
-          if (this.cancelled) return;
+            const glb = await generateGlbFromCode({
+              code,
+              timeoutMs: this.vmTimeoutMs,
+            });
+            const result = { code, glb, mime_type: "model/gltf-binary" };
 
-          const result = { error: (err as Error)?.message ?? String(err) };
+            if (this.cancelled) return;
 
-          this.status = Status.FAILED;
-          this.emit("error", result);
-          this.save(result).finally(() => this.emit("ended"));
-        })
-        .finally(() => {
+            isSucceeded = true;
+            results.push(result);
+
+            break;
+          } catch (err) {
+            if (this.cancelled) return;
+
+            results.push({ error: (err as Error)?.message ?? String(err) });
+            retries += 1;
+
+            continue;
+          }
+        }
+
+        const result = results.at(-1) ?? { error: "No results available" };
+
+        try {
+          await this.save(result);
+        } catch (err) {
+          this.log("failed to save result:", err);
+        } finally {
+          this.status = isSucceeded ? Status.SUCCEEDED : Status.FAILED;
           resolve();
-        });
+          this.emit("completed", result);
+        }
+      })();
     });
 
     return this.taskPromise;
@@ -205,22 +237,15 @@ export class ObjectGenerationTask extends EventEmitter<{
     this.status = Status.FAILED;
 
     const result = { error: "Task was cancelled" };
-    this.emit("error", result);
-    this.save(result).finally(() => this.emit("ended"));
+    this.save(result).finally(() => this.emit("completed", result));
   }
 
-  private async save({
-    code,
-    error,
-    mime_type,
-    glb,
-  }: {
-    code?: string | null;
-    error?: string | null;
-    mime_type?: string | null;
-    glb?: Uint8Array<ArrayBuffer>;
-  }) {
+  private async save(result: TaskResult) {
     try {
+      const { code, error, mime_type, glb } =
+        "error" in result
+          ? { ...result, code: null, mime_type: null, glb: null }
+          : { ...result, error: null };
       const db = await connect();
       await db.queries.add_result({
         task: {
@@ -230,10 +255,10 @@ export class ObjectGenerationTask extends EventEmitter<{
         },
         result: {
           version: this.version,
-          code: code ?? null,
-          error: error ?? null,
-          mime_type: mime_type ?? null,
-          blob_content: glb ?? null,
+          code,
+          error,
+          mime_type,
+          blob_content: glb,
           started_at: this.startedAtMs,
           ended_at: Date.now(),
         },
@@ -308,7 +333,7 @@ class ObjectDesigner {
 
     this.processing.set(task.id, task);
 
-    task.once("ended", () => {
+    task.once("completed", () => {
       this.processing.delete(task.id);
     });
 
@@ -332,14 +357,14 @@ class ObjectDesigner {
         ms === null
           ? null
           : setTimeout(() => {
-              task.off("ended", cb);
+              task.off("completed", cb);
               resolve(false);
             }, ms);
       const cb = () => {
         if (timeout !== null) clearTimeout(timeout);
         resolve(true);
       };
-      task.once("ended", cb);
+      task.once("completed", cb);
     });
   }
 }
