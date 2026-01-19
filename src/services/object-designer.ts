@@ -4,7 +4,10 @@ import debug from "debug";
 import { type LanguageModel } from "ai";
 import z from "zod";
 import { connect } from "./db";
-import { generateRandomId } from "../lib/utils/generate-random-id";
+import {
+  generateRandomId,
+  randomBase60String,
+} from "../lib/utils/generate-random-id";
 import { generateCode } from "./workflows/generate-code";
 import { generateGlbFromCode } from "./workflows/generate-glb-from-code";
 import {
@@ -20,7 +23,7 @@ import { loadInstructionsTemplateSync } from "./instructions";
 
 export type TaskResult =
   | { code: string; mime_type: string; glb: Uint8Array<ArrayBuffer> }
-  | { error: string };
+  | { code?: string; error: string };
 
 const DEFAULT_MAX_RETRIES = 2;
 
@@ -172,54 +175,67 @@ export class ObjectGenerationTask extends EventEmitter<{
 
       let isSucceeded = false;
       let retries = 0;
-      const results: TaskResult[] = [];
+      let result: TaskResult | null = null;
       const maxRetries = Math.max(0, this.maxRetries ?? DEFAULT_MAX_RETRIES);
 
       (async () => {
         while (retries <= maxRetries) {
-          if (retries != 0) {
-            this.log(
-              `Retry (${retries}/${maxRetries}), Reason:`,
-              results.at(-1),
-            );
-          }
-
           try {
+            if (retries != 0) {
+              this.log(`Retry (${retries}/${maxRetries}), Reason:`, result);
+
+              if (result) {
+                await this.save(
+                  result,
+                  `${this.version}.retry-${retries}-${randomBase60String(6)}`,
+                );
+                result = null;
+              }
+            }
+
             const code = await generateCode({
               prompt: instructions,
               model: this.languageModel,
               providerOptions: this.providerOptions,
             });
-            if (this.cancelled) return;
+            if (this.cancelled) return resolve();
 
-            const glb = await generateGlbFromCode({
-              code,
-              timeoutMs: this.vmTimeoutMs,
-            });
-            const result = { code, glb, mime_type: "model/gltf-binary" };
+            try {
+              const glb = await generateGlbFromCode({
+                code,
+                timeoutMs: this.vmTimeoutMs,
+              });
 
-            if (this.cancelled) return;
+              if (this.cancelled) return resolve();
 
-            isSucceeded = true;
-            results.push(result);
+              isSucceeded = true;
+              result = { code, glb, mime_type: "model/gltf-binary" };
 
-            break;
+              break;
+            } catch (err) {
+              if (this.cancelled) return resolve();
+
+              result = { error: (err as Error)?.message ?? String(err), code };
+              retries += 1;
+
+              continue;
+            }
           } catch (err) {
-            if (this.cancelled) return;
+            if (this.cancelled) return resolve();
 
-            results.push({ error: (err as Error)?.message ?? String(err) });
+            result = { error: (err as Error)?.message ?? String(err) };
             retries += 1;
 
             continue;
           }
         }
 
-        const result = results.at(-1) ?? { error: "No results available" };
+        result ??= { error: "No results available" };
 
         try {
           await this.save(result);
         } catch (err) {
-          this.log("failed to save result:", err);
+          this.log("unexpected error:", err);
         } finally {
           this.status = isSucceeded ? Status.SUCCEEDED : Status.FAILED;
           resolve();
@@ -242,7 +258,7 @@ export class ObjectGenerationTask extends EventEmitter<{
     this.save(result).finally(() => this.emit("completed", result));
   }
 
-  private async save(result: TaskResult) {
+  private async save(result: TaskResult, overrideVersion?: string) {
     try {
       const { code, error, mime_type, glb } =
         "error" in result
@@ -256,7 +272,7 @@ export class ObjectGenerationTask extends EventEmitter<{
           description: this.objectProps.object_description,
         },
         result: {
-          version: this.version,
+          version: overrideVersion ?? this.version,
           code,
           error,
           mime_type,
