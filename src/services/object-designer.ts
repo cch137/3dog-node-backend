@@ -115,7 +115,9 @@ export class ObjectGenerationTask extends EventEmitter<{
     this.vmTimeoutMs = vmTimeoutMs;
     this.maxRetries = maxRetries;
 
-    this.log(`queued for object '${this.objectProps.object_name}'`);
+    this.log(
+      `queued for object '${this.objectProps.object_name}': ${this.objectProps.object_description}`,
+    );
   }
 
   log(...args: any[]) {
