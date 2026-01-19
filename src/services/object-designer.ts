@@ -187,7 +187,7 @@ export class ObjectGenerationTask extends EventEmitter<{
               if (result) {
                 await this.save(
                   result,
-                  `${this.version}.retry-${retries}-${randomBase60String(6)}`,
+                  `${this.version}.failed-${retries}-${randomBase60String(6)}`,
                 );
                 result = null;
               }
