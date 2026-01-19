@@ -4,13 +4,15 @@ import { transpile, ModuleKind, ScriptTarget } from "typescript";
 import { CodeExecutionOptions } from "./schemas";
 import z from "zod";
 
+const DEFAULT_TIMEOUT_MS = 5_000;
+
 const WorkerLogsSchema = z.object({
   lines: z.array(
     z.object({
       level: z.string(),
       message: z.string(),
       ts: z.number(),
-    })
+    }),
   ),
   dropped: z.number(),
 });
@@ -31,7 +33,7 @@ const GltfWorkerResultSchema = z.union([
 
 export function generateGlbFromCode({
   code,
-  timeoutMs = 10_000,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
 }: CodeExecutionOptions) {
   return new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => {
     const workerPath = path.resolve(__dirname, "./workers/threejs.js");

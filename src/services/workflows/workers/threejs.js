@@ -143,13 +143,11 @@ function postFail(from, err, logs, droppedLogs) {
     // Load GLTFExporter (support both paths)
     let GLTFExporter;
     try {
-      ({ GLTFExporter } = await import(
-        "three/addons/exporters/GLTFExporter.js"
-      ));
+      ({ GLTFExporter } =
+        await import("three/addons/exporters/GLTFExporter.js"));
     } catch {
-      ({ GLTFExporter } = await import(
-        "three/examples/jsm/exporters/GLTFExporter.js"
-      ));
+      ({ GLTFExporter } =
+        await import("three/examples/jsm/exporters/GLTFExporter.js"));
     }
 
     // fix: inject GLTFExporter into THREE namespace to fix LLM reference errors.
@@ -251,7 +249,7 @@ function postFail(from, err, logs, droppedLogs) {
     const script = new vm.Script(prelude + userCode);
 
     // timeout only applies to synchronous execution
-    script.runInContext(context, { timeout: 10_000 });
+    script.runInContext(context, { timeout: 5_000 });
   } catch (e) {
     postFail("vm", e, logs, getDropped());
   }
