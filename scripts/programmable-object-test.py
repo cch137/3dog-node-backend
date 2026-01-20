@@ -178,8 +178,8 @@ def debug_add_object_to_rooms(payload: dict) -> None:
 
 
 if __name__ == "__main__":
-    object_name = "花瓶"
-    object_description = "一個乾隆時代的大花瓶"
+    object_name = "戰鬥機"
+    object_description = "一架先進的戰鬥機一架現代噴射戰鬥機的 3D 物件：整體為流線型機身與尖鼻錐，左右後掠主翼與尾翼（可為單垂尾或雙垂尾），側/下方進氣道與尾部噴嘴結構清晰；座艙罩為透明件，可看到簡化的座椅與儀表輪廓；機身表面具備面板分件線、維修蓋與少量鉚釘等細節（偏寫實但不過度繁複），可選擇在翼下配置掛點與簡化導彈/副油箱作為附屬物件；整體風格寫實、軍用灰系塗裝，帶輕微使用磨損與警示標示，外形以「現代戰機輪廓」為主、避免特定機型的可辨識特徵。"
     model = "gemini-3-flash-preview"
 
     obj = create_generation(object_name, object_description, model)
@@ -192,6 +192,7 @@ if __name__ == "__main__":
     glb, content_type = get_object_content_glb(obj.id, obj.version)
     print(f"      content-type: {content_type or '(none)'}")
     print(f"      received glb bytes: {len(glb)}")
+    print(f"      check snapshot at {API_BASE_URL}/objects/{obj.id}/versions/{obj.version}/snapshot")
 
     debug_add_object_to_rooms(
         {

@@ -57,7 +57,7 @@ async function createRendererBrowserContext() {
   page.on("pageerror", (e) => console.error("PAGE ERROR:", e));
   page.on("console", (m) => log(`PAGE LOG [${m.type()}]: ${m.text()}`));
   page.on("requestfailed", (r) =>
-    log("REQUEST FAILED:", r.url(), r.failure()?.errorText)
+    log("REQUEST FAILED:", r.url(), r.failure()?.errorText),
   );
 
   await page.setContent(html, { waitUntil: "load" });
@@ -115,8 +115,8 @@ function toBuffer(b: GlbBinary): Buffer {
   return b instanceof ArrayBuffer
     ? Buffer.from(b)
     : Buffer.isBuffer(b)
-    ? b
-    : Buffer.from(b);
+      ? b
+      : Buffer.from(b);
 }
 
 function pickBestGrid(n: number, cellW: number, cellH: number) {
@@ -156,7 +156,7 @@ function pickBestGrid(n: number, cellW: number, cellH: number) {
 /** Multi views -> single grid view (left->right, top->bottom), best layout by min aspect ratio. */
 export async function createImageGrid(
   views: Array<GlbBinary>,
-  options: ImageGridOptions = {}
+  options: ImageGridOptions = {},
 ): Promise<Buffer> {
   const {
     background = "#000000",
@@ -179,8 +179,8 @@ export async function createImageGrid(
 
   const resized = await Promise.all(
     bufs.map((b) =>
-      sharp(b).resize(cellW, cellH, { fit: "contain", background }).toBuffer()
-    )
+      sharp(b).resize(cellW, cellH, { fit: "contain", background }).toBuffer(),
+    ),
   );
 
   const composites = resized.map((input, i) => ({
@@ -210,9 +210,13 @@ export class GlbSnapshotsRenderer {
 
   constructor() {}
 
+  async prewarm() {
+    await this.lazyContext.ensureInitialized();
+  }
+
   async renderGlbSnapshots(
     glbBinary: GlbBinary,
-    options: RenderGlbSnapshotsOptions = {}
+    options: RenderGlbSnapshotsOptions = {},
   ) {
     const contextPromise = this.lazyContext.ensureInitialized();
     const {
@@ -272,8 +276,8 @@ export class GlbSnapshotsRenderer {
                 format,
                 jpegQuality,
               }),
-            { glbBase64, views, size, background, format, jpegQuality }
-          )
+            { glbBase64, views, size, background, format, jpegQuality },
+          ),
         )
         .then(resolve)
         .catch(reject)
@@ -298,7 +302,7 @@ export class GlbSnapshotsRenderer {
   async renderGlbSnapshotsToGrid(
     glbBinary: GlbBinary,
     options: RenderGlbSnapshotsOptions = {},
-    gridOptions: ImageGridOptions = {}
+    gridOptions: ImageGridOptions = {},
   ) {
     const views = await this.renderGlbSnapshots(glbBinary, options);
     const grid = await createImageGrid(views, gridOptions);

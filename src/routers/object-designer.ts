@@ -27,7 +27,7 @@ objectDesigner.get("/objects/:id", async (c) => {
 objectDesigner.get("/objects/:id/versions/:version/code", async (c) => {
   const data = await designer.getObjectCode(
     c.req.param("id"),
-    c.req.param("version")
+    c.req.param("version"),
   );
   if (data === null)
     return c.json({ success: false, error: "Object not found" }, 404);
@@ -40,7 +40,7 @@ objectDesigner.get("/objects/:id/versions/:version/code", async (c) => {
 objectDesigner.get("/objects/:id/versions/:version/content", async (c) => {
   const data = await designer.getObjectContent(
     c.req.param("id"),
-    c.req.param("version")
+    c.req.param("version"),
   );
   if (data === null)
     return c.json({ success: false, error: "Object not found" }, 404);
@@ -49,6 +49,21 @@ objectDesigner.get("/objects/:id/versions/:version/content", async (c) => {
     return c.json({ success: false, error: "Content not found" }, 404);
   if (data.mime_type) c.header("Content-Type", data.mime_type);
   return c.body(new Uint8Array(data.blob_content));
+});
+
+objectDesigner.get("/objects/:id/versions/:version/snapshot", async (c) => {
+  const id = c.req.param("id");
+  const version = c.req.param("version");
+
+  try {
+    const data = await designer.getObjectSnapshot(id, version);
+    if (data === null)
+      return c.json({ success: false, error: "Snapshot not found" }, 404);
+    c.header("Content-Type", data.mime_type);
+    return c.body(new Uint8Array(data.blob_content));
+  } catch (err) {
+    return c.json({ success: false, error: String(err) }, 500);
+  }
 });
 
 objectDesigner.post("/generations", async (c) => {

@@ -40,3 +40,16 @@ CREATE TABLE IF NOT EXISTS object_generation_results (
 
 CREATE INDEX IF NOT EXISTS idx_object_generation_results_task
 ON object_generation_results(task_id);
+
+CREATE TABLE IF NOT EXISTS object_generation_snapshots (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  result_id    INTEGER NOT NULL,
+  type         TEXT NOT NULL,
+  mime_type    TEXT NOT NULL,
+  blob_content BLOB NOT NULL,
+  created_at   INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000),
+  FOREIGN KEY (result_id) REFERENCES object_generation_results(id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_object_generation_snapshots_result
+ON object_generation_snapshots(result_id);
