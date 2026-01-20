@@ -10,7 +10,7 @@ export function extractCodeFromMarkdown(markdown: string): string | null {
   const startTagIndex = markdown.indexOf("```");
   if (startTagIndex === -1) return null;
   const firstLineEndIndex = markdown.indexOf("\n", startTagIndex);
-  if (firstLineEndIndex === -1) return "";
+  if (firstLineEndIndex === -1) return null;
   const codeStartIndex = firstLineEndIndex + 1;
   const endTagIndex = markdown.indexOf("```", codeStartIndex);
   if (endTagIndex !== -1) {
@@ -22,5 +22,7 @@ export function extractCodeFromMarkdown(markdown: string): string | null {
 
 export async function generateCode(options: GenerateTextOptions) {
   const { text } = await generateText(options);
-  return extractCodeFromMarkdown(text) || text;
+  const code = extractCodeFromMarkdown(text)?.trim();
+  if (!code) return text;
+  return code;
 }
