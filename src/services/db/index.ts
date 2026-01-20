@@ -79,11 +79,30 @@ type QueryMap = {
     task_id: string;
     version: string;
   }) => Promise<boolean>;
+
+  get_result_snapshot: (params: {
+    task_id: string;
+    version?: string;
+  }) => Promise<{
+    id: number;
+    type: string;
+    mime_type: string;
+    blob_content: Buffer;
+    created_at: number;
+  } | null>;
+
+  set_result_snapshot: (params: {
+    task_id: string;
+    version?: string;
+    type: string;
+    mime_type: string;
+    blob_content: Buffer | Uint8Array;
+  }) => Promise<{ id: number } | null>;
 };
 
 async function sha256(data: string | Uint8Array) {
   const array = Uint8Array.from(
-    typeof data === "string" ? new TextEncoder().encode(data) : data
+    typeof data === "string" ? new TextEncoder().encode(data) : data,
   );
   const buf = await crypto.subtle.digest("SHA-256", array);
   const hex = [...new Uint8Array(buf)]
@@ -133,7 +152,7 @@ export function createDatabase(name: string) {
         const blob = result.blob_content ?? null;
         if ((mime === null) !== (blob === null)) {
           throw new Error(
-            "mime_type and blob_content must both be null or both be non-null"
+            "mime_type and blob_content must both be null or both be non-null",
           );
         }
 
@@ -147,7 +166,7 @@ export function createDatabase(name: string) {
 
         if (parts.length !== 2) {
           throw new Error(
-            `add_result.sql must contain exactly 2 statements, got ${parts.length}`
+            `add_result.sql must contain exactly 2 statements, got ${parts.length}`,
           );
         }
 
@@ -310,6 +329,45 @@ export function createDatabase(name: string) {
           | undefined;
         return Boolean(row);
       },
+
+    get_result_snapshot:
+      ({ db, sql }) =>
+      async ({ task_id, version }) => {
+        version ??= (await db.queries.get_latest_version({ task_id }))?.version;
+        if (!version) return null;
+
+        const stmt = db.prepare(sql);
+        const row = stmt.get({ task_id, version }) as
+          | {
+              id: number;
+              type: string;
+              mime_type: string;
+              blob_content: Buffer;
+              created_at: number;
+            }
+          | undefined;
+
+        return row ?? null;
+      },
+
+    set_result_snapshot:
+      ({ db, sql }) =>
+      async ({ task_id, version, type, mime_type, blob_content }) => {
+        version ??= (await db.queries.get_latest_version({ task_id }))?.version;
+        if (!version) return null;
+
+        const stmt = db.prepare(sql);
+        const info = stmt.run({
+          task_id,
+          version,
+          type,
+          mime_type,
+          blob_content,
+        });
+
+        if (info.changes === 0) return null;
+        return { id: Number(info.lastInsertRowid) };
+      },
   });
 }
 
@@ -322,10 +380,24 @@ export const connect = (() => {
 
     if (!_db) _db = db;
 
-    connectionPending ??= db.queries.initialize().catch((err) => {
-      db.log("initialization error:", stringifyError(err));
-      process.exit(1);
-    });
+    connectionPending ??= db.queries
+      .initialize()
+      .then(() => {
+        const close = () => {
+          try {
+            db.close();
+          } catch (err) {
+            db.log("closing error:", stringifyError(err));
+          }
+        };
+
+        process.on("SIGINT", close);
+        process.on("SIGTERM", close);
+      })
+      .catch((err) => {
+        db.log("initialization error:", stringifyError(err));
+        process.exit(1);
+      });
 
     await connectionPending;
 

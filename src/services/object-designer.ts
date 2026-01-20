@@ -80,6 +80,14 @@ export type ObjectGenerationState = {
   tasks: ObjectGenerationTaskState[];
 };
 
+export type ObjectSnapshotState = {
+  id: number;
+  type: string;
+  mime_type: string;
+  blob_content: Buffer;
+  created_at: number;
+};
+
 const log = debug("obj-dsgn");
 
 export class ObjectGenerationTask extends EventEmitter<{
@@ -87,7 +95,7 @@ export class ObjectGenerationTask extends EventEmitter<{
   completed: [result: TaskResult];
 }> {
   private static readonly renderThreeJsGenerationPrompt =
-    loadInstructionsTemplateSync<ObjectProps>("threejs-generation");
+    loadInstructionsTemplateSync<ObjectProps>("threejs-generation-v2");
 
   constructor({
     id,
@@ -262,8 +270,8 @@ export class ObjectGenerationTask extends EventEmitter<{
     try {
       const { code, error, mime_type, glb } =
         "error" in result
-          ? { ...result, code: null, mime_type: null, glb: null }
-          : { ...result, error: null };
+          ? { code: null, mime_type: null, glb: null, ...result }
+          : { error: null, ...result };
       const db = await connect();
       await db.queries.add_result({
         task: {
@@ -289,6 +297,10 @@ export class ObjectGenerationTask extends EventEmitter<{
 
 class ObjectDesigner {
   private static readonly renderer = new GlbSnapshotsRenderer();
+
+  static prewarmRenderer() {
+    return this.renderer.prewarm();
+  }
 
   static createSnapshotPng(glbBinary: GlbBinary) {
     return this.renderer.renderGlbSnapshotsToGrid(glbBinary, {
@@ -346,6 +358,74 @@ class ObjectDesigner {
     return await db.queries.get_result_content({ task_id: taskId, version });
   }
 
+  private readonly processingSnapshots = new Map<
+    string,
+    [string | undefined, Promise<ObjectSnapshotState | null>][]
+  >();
+
+  getObjectSnapshot(
+    taskId: string,
+    version?: string,
+  ): Promise<ObjectSnapshotState | null> {
+    let taskSnapshots = this.processingSnapshots.get(taskId);
+    if (taskSnapshots) {
+      for (const [v, p] of taskSnapshots) {
+        if (v === version) return p;
+      }
+    } else {
+      taskSnapshots = [];
+      this.processingSnapshots.set(taskId, taskSnapshots);
+    }
+
+    const promise = new Promise<ObjectSnapshotState | null>(
+      async (resolve, reject) => {
+        try {
+          const db = await connect();
+
+          const cached = await db.queries.get_result_snapshot({
+            task_id: taskId,
+            version,
+          });
+          if (cached) return resolve(cached);
+
+          const content = await db.queries.get_result_content({
+            task_id: taskId,
+            version,
+          });
+          if (!content || content.error || !content.blob_content)
+            return resolve(null);
+
+          const png = await ObjectDesigner.createSnapshotPng(
+            new Uint8Array(content.blob_content),
+          );
+
+          const inserted = await db.queries.set_result_snapshot({
+            task_id: taskId,
+            version,
+            type: "grid16",
+            mime_type: "image/png",
+            blob_content: Buffer.from(png),
+          });
+          if (!inserted) return resolve(null);
+
+          return resolve(
+            await db.queries.get_result_snapshot({ task_id: taskId, version }),
+          );
+        } catch (err) {
+          reject(err);
+        }
+      },
+    );
+
+    taskSnapshots.push([version, promise]);
+
+    return promise.finally(() => {
+      const index = taskSnapshots.findIndex(([v]) => v === version);
+      if (index >= 0) taskSnapshots.splice(index, 1);
+      if (taskSnapshots.length === 0) this.processingSnapshots.delete(taskId);
+    });
+  }
+
   addTask(options: ObjectGenerationOptions) {
     const task = new ObjectGenerationTask(options);
 
@@ -388,3 +468,7 @@ class ObjectDesigner {
 }
 
 export const designer = new ObjectDesigner();
+
+// NOTE: Pre-warm renderer and database connection to detect connectivity issues early and reduce latency.
+connect();
+ObjectDesigner.prewarmRenderer();
