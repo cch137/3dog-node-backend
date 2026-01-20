@@ -95,7 +95,7 @@ export class ObjectGenerationTask extends EventEmitter<{
   completed: [result: TaskResult];
 }> {
   private static readonly renderThreeJsGenerationPrompt =
-    loadInstructionsTemplateSync<ObjectProps>("threejs-generation");
+    loadInstructionsTemplateSync<ObjectProps>("threejs-generation-v2");
 
   constructor({
     id,
