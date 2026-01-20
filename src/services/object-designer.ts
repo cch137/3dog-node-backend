@@ -262,8 +262,8 @@ export class ObjectGenerationTask extends EventEmitter<{
     try {
       const { code, error, mime_type, glb } =
         "error" in result
-          ? { ...result, code: null, mime_type: null, glb: null }
-          : { ...result, error: null };
+          ? { code: null, mime_type: null, glb: null, ...result }
+          : { error: null, ...result };
       const db = await connect();
       await db.queries.add_result({
         task: {
