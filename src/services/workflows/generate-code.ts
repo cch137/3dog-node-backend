@@ -22,5 +22,5 @@ export function extractCodeFromMarkdown(markdown: string): string | null {
 
 export async function generateCode(options: GenerateTextOptions) {
   const { text } = await generateText(options);
-  return extractCodeFromMarkdown(text) ?? text;
+  return extractCodeFromMarkdown(text) || text;
 }
