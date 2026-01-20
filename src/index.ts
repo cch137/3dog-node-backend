@@ -1,8 +1,10 @@
 import { config as dotenv } from "dotenv";
-import debug from "debug";
 
 dotenv();
 
+if (!process.env.DEBUG) process.env.DEBUG = "*,-pw:*";
+
+import debug from "debug";
 import { app, upgradeWebSocket } from "./server";
 import { realtimeHandler } from "./services/realtime/connection";
 import dss from "./routers/dss";
