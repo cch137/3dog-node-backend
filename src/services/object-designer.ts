@@ -447,7 +447,7 @@ class ObjectDesigner {
     return true;
   }
 
-  waitForTaskEnded(taskId: string, ms: number | null = null) {
+  waitForTaskCompleted(taskId: string, ms: number | null = null) {
     const task = this.processing.get(taskId);
     if (!task) return Promise.resolve(true);
     return new Promise<boolean>((resolve) => {
