@@ -17,8 +17,34 @@ function resolveLanguageModel(model: string) {
 
 const objectDesigner = new Hono();
 
+// NOTE: Wait usage: `/objects/:id?wait=true&timeout_sec=30`.
 objectDesigner.get("/objects/:id", async (c) => {
-  const state = await designer.getObjectState(c.req.param("id"));
+  const id = c.req.param("id");
+  const waitRaw = String(c.req.query("wait") || "")
+    .toLowerCase()
+    .trim();
+  const wait =
+    waitRaw === "true" ||
+    waitRaw === "1" ||
+    waitRaw === "y" ||
+    waitRaw === "yes";
+
+  if (!wait) {
+    const state = await designer.getObjectState(id);
+    if (state === null)
+      return c.json({ success: false, error: "Object not found" }, 404);
+    return c.json({ success: true, data: state }, 200);
+  }
+
+  const timeoutSec =
+    parseInt(c.req.query("timeout_sec") ?? "NaN", 10) || undefined;
+  const timeoutMs = timeoutSec ? timeoutSec * 1_000 : timeoutSec;
+
+  const state = await designer.waitForObjectState(id, {
+    wait: true,
+    timeoutMs,
+  });
+
   if (state === null)
     return c.json({ success: false, error: "Object not found" }, 404);
   return c.json({ success: true, data: state }, 200);

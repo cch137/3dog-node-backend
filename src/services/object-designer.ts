@@ -465,6 +465,25 @@ class ObjectDesigner {
       task.once("completed", cb);
     });
   }
+
+  waitForObjectState(
+    taskId: string,
+    waitOptions: { wait: true; timeoutMs?: number } | { wait: false },
+  ) {
+    if (!waitOptions.wait) return this.getObjectState(taskId);
+    const task = this.processing.get(taskId);
+    if (!task) return this.getObjectState(taskId);
+    return new Promise<ObjectGenerationState | null>((resolve, reject) => {
+      const timeoutMs = waitOptions.timeoutMs ?? null;
+      const cb = () => {
+        task.off("completed", cb);
+        if (timeout !== null) clearTimeout(timeout);
+        this.getObjectState(taskId).then(resolve).catch(reject);
+      };
+      const timeout = timeoutMs === null ? null : setTimeout(cb, timeoutMs);
+      task.once("completed", cb);
+    });
+  }
 }
 
 export const designer = new ObjectDesigner();
