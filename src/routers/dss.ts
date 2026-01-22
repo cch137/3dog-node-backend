@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import debug from "debug";
 
 import { stringifyError } from "../lib/utils/error-handle";
+import { createRouterLogger } from "../lib/middlewares/route-logger";
 
 const log = debug("dss");
 const bodyLog = log.extend("body");
@@ -122,6 +123,8 @@ export const store = new RelayStore<unknown>(
 );
 
 const dss = new Hono();
+
+dss.use(createRouterLogger(log));
 
 // POST /data/:id  (JSON only)
 dss.post("/data/:id", async (c) => {
