@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import {
@@ -17,8 +17,34 @@ function resolveLanguageModel(model: string) {
 
 const objectDesigner = new Hono();
 
+// NOTE: Wait usage: `/objects/:id?wait=true&timeout_sec=30`.
 objectDesigner.get("/objects/:id", async (c) => {
-  const state = await designer.getObjectState(c.req.param("id"));
+  const id = c.req.param("id");
+  const waitRaw = String(c.req.query("wait") || "")
+    .toLowerCase()
+    .trim();
+  const wait =
+    waitRaw === "true" ||
+    waitRaw === "1" ||
+    waitRaw === "y" ||
+    waitRaw === "yes";
+
+  if (!wait) {
+    const state = await designer.getObjectState(id);
+    if (state === null)
+      return c.json({ success: false, error: "Object not found" }, 404);
+    return c.json({ success: true, data: state }, 200);
+  }
+
+  const timeoutSec =
+    parseInt(c.req.query("timeout_sec") ?? "NaN", 10) || undefined;
+  const timeoutMs = timeoutSec ? timeoutSec * 1_000 : timeoutSec;
+
+  const state = await designer.waitForObjectState(id, {
+    wait: true,
+    timeoutMs,
+  });
+
   if (state === null)
     return c.json({ success: false, error: "Object not found" }, 404);
   return c.json({ success: true, data: state }, 200);
@@ -104,12 +130,21 @@ objectDesigner.post("/generations/:id/cancel", async (c) => {
   return c.json({ success: false, error: "Task not found" }, 404);
 });
 
-objectDesigner.get("/generations/:id/ended", async (c) => {
+const waitForTaskCompletedHandler = async (c: Context) => {
   const timeoutMs = parseInt(c.req.query("ms") ?? "NaN", 10) || undefined;
-  const isEnded = await designer.waitForTaskEnded(c.req.param("id"), timeoutMs);
-  if (isEnded) return c.json({ success: true }, 200);
+  const isCompleted = await designer.waitForTaskCompleted(
+    c.req.param("id"),
+    timeoutMs,
+  );
+  if (isCompleted) return c.json({ success: true }, 200);
   return c.json({ success: false, error: "Task is proccessing" }, 202);
-});
+};
+
+objectDesigner.get("/generations/:id/completed", waitForTaskCompletedHandler);
+
+// NOTE: Legacy endpoint. Use `/generations/:id/completed` instead.
+// NOTE: 未來也應該把 Database 的 `ended_at` 改成 `completed_at`。
+objectDesigner.get("/generations/:id/ended", waitForTaskCompletedHandler);
 
 objectDesigner.post("/_debug_add_prog_obj_rooms", async (c) => {
   try {

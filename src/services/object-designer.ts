@@ -319,23 +319,38 @@ class ObjectDesigner {
     const db = await connect();
     const processingTask = this.processing.get(taskId);
     const response = await db.queries.get_task({ task_id: taskId });
+    const processingVersion: ObjectGenerationTaskState | null = processingTask
+      ? {
+          version: processingTask.version,
+          status: Status.PROCESSING,
+          error: null,
+          started_at: processingTask.startedAtMs,
+          ended_at: null,
+        }
+      : null;
 
-    if (!response) return null;
+    if (!response) {
+      // Note: If the task isn't found in the database and it's not in the in-memory processing queue, treat it as not found.
+      if (!processingVersion || !processingTask) return null;
+
+      // Note: Return a synthetic object state for tasks that are still processing and not persisted yet.
+      return {
+        id: taskId,
+        name: processingTask.objectProps.object_name,
+        description: processingTask.objectProps.object_description,
+        created_at: processingTask.startedAtMs,
+        modified_at: Date.now(),
+        is_processing: Boolean(processingTask),
+        tasks: [processingVersion],
+      };
+    }
 
     const tasks: ObjectGenerationTaskState[] = response.results.map((i) => ({
       ...i,
       status: i.success ? Status.SUCCEEDED : Status.FAILED,
     }));
 
-    if (processingTask) {
-      tasks.unshift({
-        version: processingTask.version,
-        status: Status.PROCESSING,
-        error: null,
-        started_at: processingTask.startedAtMs,
-        ended_at: null,
-      });
-    }
+    if (processingVersion) tasks.unshift(processingVersion);
 
     return {
       id: taskId,
@@ -447,7 +462,7 @@ class ObjectDesigner {
     return true;
   }
 
-  waitForTaskEnded(taskId: string, ms: number | null = null) {
+  waitForTaskCompleted(taskId: string, ms: number | null = null) {
     const task = this.processing.get(taskId);
     if (!task) return Promise.resolve(true);
     return new Promise<boolean>((resolve) => {
@@ -464,6 +479,15 @@ class ObjectDesigner {
       };
       task.once("completed", cb);
     });
+  }
+
+  async waitForObjectState(
+    taskId: string,
+    waitOptions: { wait: true; timeoutMs?: number } | { wait: false },
+  ) {
+    if (!waitOptions.wait) return await this.getObjectState(taskId);
+    await this.waitForTaskCompleted(taskId, waitOptions.timeoutMs);
+    return await this.getObjectState(taskId);
   }
 }
 
