@@ -49,7 +49,7 @@ export const servers = (() => {
   addPort(process.env.PORT);
   for (const p of (process.env.PORTS ?? "").split(",")) addPort(p.trim());
 
-  if (ports.size === 0) ports.add(3000);
+  if (ports.size === 0) ports.add(3609);
 
   const servers = Object.freeze(
     Array.from(ports).map((port) => {
