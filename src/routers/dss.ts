@@ -10,7 +10,7 @@ const bodyLog = log.extend("body");
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
 const INACTIVITY_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_QUEUE_SIZE = 256; // max records per queue
-const MAX_POST_DATA_BYTES = 4 * 1024 * 1024; // 5 MB
+const MAX_POST_DATA_BYTES = 4 * 1024 * 1024; // 4 MB
 
 export class RelayQueue<T = unknown> {
   private items: T[] = [];
