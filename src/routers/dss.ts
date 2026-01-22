@@ -1,4 +1,3 @@
-// app.ts
 import { Hono } from "hono";
 import debug from "debug";
 
@@ -9,8 +8,8 @@ const bodyLog = log.extend("body");
 
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
 const INACTIVITY_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_QUEUE_SIZE = 64; // max records per queue
-const MAX_POST_DATA_BYTES = 64 * 1024; // 64 KB
+const MAX_QUEUE_SIZE = 256; // max records per queue
+const MAX_POST_DATA_BYTES = 4 * 1024 * 1024; // 5 MB
 
 export class RelayQueue<T = unknown> {
   private items: T[] = [];
@@ -56,7 +55,7 @@ export class RelayStore<T = unknown> {
 
   constructor(
     private readonly inactivityTtlMs: number,
-    cleanupIntervalMs: number
+    cleanupIntervalMs: number,
   ) {
     this.cleanupTimer = setInterval(() => this.cleanup(), cleanupIntervalMs);
   }
@@ -119,7 +118,7 @@ export class RelayStore<T = unknown> {
 
 export const store = new RelayStore<unknown>(
   INACTIVITY_TTL_MS,
-  CLEANUP_INTERVAL_MS
+  CLEANUP_INTERVAL_MS,
 );
 
 const dss = new Hono();
