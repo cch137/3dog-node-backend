@@ -1,16 +1,18 @@
-// app.ts
 import { Hono } from "hono";
 import debug from "debug";
+import { EventEmitter } from "node:events";
 
 import { stringifyError } from "../lib/utils/error-handle";
+import { createRouterLogger } from "../lib/middlewares/route-logger";
 
 const log = debug("dss");
 const bodyLog = log.extend("body");
 
-const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
-const INACTIVITY_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_QUEUE_SIZE = 64; // max records per queue
-const MAX_POST_DATA_BYTES = 64 * 1024; // 64 KB
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+const INACTIVITY_TTL_MS = 10 * 60 * 1000;
+const MAX_QUEUE_SIZE = 1024; // max records per queue
+const MAX_POST_DATA_BYTES = 4 * 1024 * 1024;
+const LONG_POLL_TIMEOUT_MS = 30_000;
 
 export class RelayQueue<T = unknown> {
   private items: T[] = [];
@@ -54,9 +56,12 @@ export class RelayStore<T = unknown> {
   private readonly cleanupTimer: ReturnType<typeof setInterval>;
   private destroyed = false;
 
+  // Emitter for long-polling notifications
+  private readonly emitter = new EventEmitter();
+
   constructor(
     private readonly inactivityTtlMs: number,
-    cleanupIntervalMs: number
+    cleanupIntervalMs: number,
   ) {
     this.cleanupTimer = setInterval(() => this.cleanup(), cleanupIntervalMs);
   }
@@ -72,6 +77,9 @@ export class RelayStore<T = unknown> {
       this.queues.set(id, queue);
     }
     queue.push(payload);
+
+    // Notify waiters immediately
+    this.emitter.emit(this.eventName(id));
   }
 
   pop(id: string): T | undefined {
@@ -97,6 +105,70 @@ export class RelayStore<T = unknown> {
     return this.queues.delete(id);
   }
 
+  /**
+   * Long-polling: wait up to `timeoutMs` for any data pushed into `id` queue,
+   * then pop and return it. Returns `undefined` on timeout.
+   */
+  async waitPop(id: string, timeoutMs: number): Promise<T | undefined> {
+    if (this.destroyed) {
+      throw new Error("Store is destroyed");
+    }
+
+    // Fast path
+    const immediate = this.pop(id);
+    if (immediate !== undefined) return immediate;
+
+    const evt = this.eventName(id);
+
+    return await new Promise<T | undefined>((resolve, reject) => {
+      let settled = false;
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        this.emitter.removeListener(evt, onData);
+      };
+
+      const settle = (value: T | undefined) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(value);
+      };
+
+      const onData = () => {
+        try {
+          // Pop after notification
+          const payload = this.pop(id);
+          if (payload !== undefined) settle(payload);
+          // If somehow undefined (race), keep waiting until timeout.
+        } catch (e) {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(e);
+        }
+      };
+
+      this.emitter.on(evt, onData);
+
+      // Avoid missing pushes between "fast path" and listener registration
+      try {
+        const afterListen = this.pop(id);
+        if (afterListen !== undefined) return settle(afterListen);
+      } catch (e) {
+        settled = true;
+        cleanup();
+        return reject(e);
+      }
+
+      const timer = setTimeout(() => settle(undefined), timeoutMs);
+    });
+  }
+
+  private eventName(id: string) {
+    return `data:${id}`;
+  }
+
   private cleanup() {
     const now = Date.now();
     for (const [id, queue] of this.queues.entries()) {
@@ -113,19 +185,23 @@ export class RelayStore<T = unknown> {
   destroy() {
     this.queues.clear();
     clearInterval(this.cleanupTimer);
+    this.emitter.removeAllListeners();
     this.destroyed = true;
   }
 }
 
 export const store = new RelayStore<unknown>(
   INACTIVITY_TTL_MS,
-  CLEANUP_INTERVAL_MS
+  CLEANUP_INTERVAL_MS,
 );
 
+const app = new Hono();
 const dss = new Hono();
 
+dss.use(createRouterLogger(log));
+
 // POST /data/:id  (JSON only)
-dss.post("/data/:id", async (c) => {
+dss.post("/:id", async (c) => {
   const contentLength = Number(c.req.header("content-length") ?? 0);
   if (contentLength > MAX_POST_DATA_BYTES) {
     return c.json({ error: "Payload too large" }, 413);
@@ -148,12 +224,13 @@ dss.post("/data/:id", async (c) => {
   }
 });
 
-// GET /data/:id
-dss.get("/data/:id", (c) => {
+// GET /data/:id  (long polling)
+dss.get("/:id", async (c) => {
   const id = c.req.param("id");
 
   try {
-    const payload = store.pop(id);
+    const payload = await store.waitPop(id, LONG_POLL_TIMEOUT_MS);
+
     if (
       payload &&
       typeof payload === "object" &&
@@ -162,9 +239,11 @@ dss.get("/data/:id", (c) => {
     ) {
       store.delete(id);
     }
+
     if (payload === undefined) {
       return c.body(null, 404);
     }
+
     return c.json(payload, 200);
   } catch (error) {
     return c.json({ error: stringifyError(error) }, 500);
@@ -172,7 +251,7 @@ dss.get("/data/:id", (c) => {
 });
 
 // DELETE /data/:id
-dss.delete("/data/:id", (c) => {
+dss.delete("/:id", (c) => {
   const id = c.req.param("id");
 
   try {
@@ -182,4 +261,6 @@ dss.delete("/data/:id", (c) => {
   }
 });
 
-export default dss;
+app.route("/data/", dss);
+
+export default app;
