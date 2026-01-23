@@ -10,7 +10,7 @@ const bodyLog = log.extend("body");
 
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const INACTIVITY_TTL_MS = 10 * 60 * 1000;
-const MAX_QUEUE_SIZE = 256; // max records per queue
+const MAX_QUEUE_SIZE = 1024; // max records per queue
 const MAX_POST_DATA_BYTES = 4 * 1024 * 1024;
 const LONG_POLL_TIMEOUT_MS = 30_000;
 
