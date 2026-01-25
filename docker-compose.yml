@@ -4,10 +4,10 @@ services:
     image: 3dog-node-backend:latest
     restart: unless-stopped
     environment:
-      - NODE_ENV: production
-      - PORT: 3609
-      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      NODE_ENV: production
+      PORT: 3609
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     env_file:
       - path: .env
         required: false
