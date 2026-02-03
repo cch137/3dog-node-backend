@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 from urllib import error, request
 
-API_BASE_URL = "https://40001.cch137.com/obj-dsgn"
+API_BASE_URL = "http://localhost:3609/obj-dsgn"
 
 # Per-request long-poll timeout for `?wait=true`
 DEFAULT_WAIT_TIMEOUT_SEC = 30
